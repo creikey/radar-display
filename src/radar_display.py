@@ -20,6 +20,8 @@ STYLESHEET_NAME = "stylesheet.qss"
 IMAGE_DIMENSIONS = [128, 128]
 UDP_IP = "127.0.0.1"
 UDP_PORT = 54321
+UDP_PING_MESSAGE = b"ready"
+SOCKET_TIMEOUT = 3.0
 
 
 class RadarImage(QtWidgets.QLabel):
@@ -75,7 +77,8 @@ class DataThread(QThread):
             #         self.data[i * IMAGE_DIMENSIONS[0] + j] = i + j
 
             # logging.debug(f"emitting new data to {self.data}")
-            if data != None:
+            if not self.stopping:
+                logging.info(f"Received new image from {addr}")
                 self.new_data.emit(
                     QImage(
                         data,
@@ -92,7 +95,15 @@ def main():
 
     # bind UDP socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # internt IP with UDP
-    sock.connect((UDP_IP, UDP_PORT))
+    sock.settimeout(SOCKET_TIMEOUT)
+    logging.info(f"Sending {UDP_PING_MESSAGE}")
+    sock.sendto(UDP_PING_MESSAGE, (UDP_IP, UDP_PORT))
+    logging.info(f"Waiting for response {UDP_PING_MESSAGE} ...")
+    data, server = sock.recvfrom(len(UDP_PING_MESSAGE))
+    logging.info(f"Got response: {data}")
+    if data != UDP_PING_MESSAGE:
+        logging.error(f"Did not get back {UDP_PING_MESSAGE} response!")
+        sys.exit(1)
     logging.info(f"Connected to IP {UDP_IP} with port {UDP_PORT}")
 
     app = QtWidgets.QApplication(sys.argv)
@@ -123,7 +134,6 @@ def main():
     logging.debug("Stopping thread...")
     data_thread.stopping = True
     logging.debug("Shutting down socket")
-    data_thread.sock.shutdown(socket.SHUT_RD)
     data_thread.wait()
     sys.exit(qt_exit_code)
 
