@@ -1,0 +1,2 @@
+PySide2==5.12.3
+coloredlogs==10.0
