@@ -19,11 +19,18 @@ import numpy as np
 from io import BytesIO
 
 STYLESHEET_NAME = "stylesheet.qss"
-IMAGE_DIMENSIONS = [128, 128]
+IMAGE_DIMENSIONS = [1024, 256]
 TCP_IP = "127.0.0.1"
 TCP_PORT = 54321
 UDP_PING_MESSAGE = b"ready"
 SOCKET_TIMEOUT = 3.0
+
+# f = BytesIO()
+# np.savez_compressed(
+#     f, frame=np.zeros((IMAGE_DIMENSIONS[0], IMAGE_DIMENSIONS[1]), dtype="f")
+# )
+# f.seek(0)
+DATA_LEN = IMAGE_DIMENSIONS[0] * IMAGE_DIMENSIONS[1] * 4
 
 
 class RadarImage(QtWidgets.QLabel):
@@ -69,19 +76,29 @@ class DataThread(QThread):
     def __del__(self):
         pass  # TODO make deconstructor shutdown instead of in main
 
+    def get_data(self):
+        chunks = []
+        bytes_recd = 0
+        while bytes_recd < DATA_LEN:
+            chunk = self.sock.recv(min(DATA_LEN - bytes_recd, 2048))
+            if chunk == b"":
+                raise RuntimeError("socket connection broken")
+            chunks.append(chunk)
+            bytes_recd = bytes_recd + len(chunk)
+        return b"".join(chunks)
+
     def run(self):
         while not self.stopping:
-            data = self.sock.recv(
-                IMAGE_DIMENSIONS[0] * IMAGE_DIMENSIONS[1]
-            )  # receive whole image in buffer
+            data = self.get_data()
             # for i in range(0, IMAGE_DIMENSIONS[0]):
             #     for j in range(0, IMAGE_DIMENSIONS[1]):
             #         self.data[i * IMAGE_DIMENSIONS[0] + j] = i + j
-            final_data = np.load(BytesIO(data))["frame"]
+            # logging.debug(f"{DATA_LEN}")
+            final_data = np.frombuffer(data, dtype="f")
             final_data = np.int8(final_data)  # TODO colorramp with slider as max
             # logging.debug(f"emitting new data to {self.data}")
             if not self.stopping:
-                logging.info(f"Received new image")
+                # logging.info(f"Received new image")
                 self.new_data.emit(
                     QImage(
                         final_data,

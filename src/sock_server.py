@@ -16,8 +16,7 @@ def main():
 
     data = np.zeros((IMAGE_DIMENSIONS[0], IMAGE_DIMENSIONS[1]), dtype="f")
 
-    for d in np.nditer(data, op_flags=["readwrite"]):
-        d[...] = d + 127
+    # x = 0
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind(("", TCP_PORT))
@@ -27,20 +26,25 @@ def main():
     with conn:
         logging.info(f"Connected to {address}")
         while True:
-            logging.info("Sending new image")
+            # for d in np.nditer(data, op_flags=["readwrite"]):
+            #     d[...] = d + x
+            #     x += 0.1
+            # logging.info(f"Sending new image of length {len(data.tobytes())}")
             # for i in range(0, IMAGE_DIMENSIONS[0]):
             # for j in range(0, IMAGE_DIMENSIONS[1]):
             # sock.sendto(bytes([127]), address)
-            f = BytesIO()
-            np.savez_compressed(f, frame=data)
-            f.seek(0)
+            # f = BytesIO()
+            # np.savez_compressed(f, frame=data)
+            # f.seek(0)
+            # f_data = f.read()
+            # logging.debug(f"{len(f_data)}")
             try:
-                conn.sendall(f.read())
+                conn.sendall(data.tobytes())
             except BrokenPipeError:
                 logging.warning("Client disconnected")
                 sys.exit(0)
-            logging.info("Waiting")
-            time.sleep(1)
+            # logging.info("Waiting")
+            # time.sleep(0.01)
 
 
 if __name__ == "__main__":
