@@ -18,8 +18,8 @@ import time  # make data thread wait when testing TODO remove once socket server
 
 STYLESHEET_NAME = "stylesheet.qss"
 IMAGE_DIMENSIONS = [128, 128]
-UDP_IP = "127.0.0.1"
-UDP_PORT = 54321
+TCP_IP = "127.0.0.1"
+TCP_PORT = 54321
 UDP_PING_MESSAGE = b"ready"
 SOCKET_TIMEOUT = 3.0
 
@@ -69,7 +69,7 @@ class DataThread(QThread):
 
     def run(self):
         while not self.stopping:
-            data, addr = self.sock.recvfrom(
+            data = self.sock.recv(
                 IMAGE_DIMENSIONS[0] * IMAGE_DIMENSIONS[1]
             )  # receive whole image in buffer
             # for i in range(0, IMAGE_DIMENSIONS[0]):
@@ -78,7 +78,7 @@ class DataThread(QThread):
 
             # logging.debug(f"emitting new data to {self.data}")
             if not self.stopping:
-                logging.info(f"Received new image from {addr}")
+                logging.info(f"Received new image")
                 self.new_data.emit(
                     QImage(
                         data,
@@ -94,48 +94,42 @@ def main():
     coloredlogs.install(level="DEBUG")
 
     # bind UDP socket
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # internt IP with UDP
-    sock.settimeout(SOCKET_TIMEOUT)
-    logging.info(f"Sending {UDP_PING_MESSAGE}")
-    sock.sendto(UDP_PING_MESSAGE, (UDP_IP, UDP_PORT))
-    logging.info(f"Waiting for response {UDP_PING_MESSAGE} ...")
-    data, server = sock.recvfrom(len(UDP_PING_MESSAGE))
-    logging.info(f"Got response: {data}")
-    if data != UDP_PING_MESSAGE:
-        logging.error(f"Did not get back {UDP_PING_MESSAGE} response!")
-        sys.exit(1)
-    logging.info(f"Connected to IP {UDP_IP} with port {UDP_PORT}")
+    with socket.socket(
+        socket.AF_INET, socket.SOCK_STREAM
+    ) as sock:  # internt IP with UDP
+        sock.connect((TCP_IP, TCP_PORT))
+        logging.info(f"Connected to IP {TCP_IP} with port {TCP_PORT}")
 
-    app = QtWidgets.QApplication(sys.argv)
-    try:
-        with open(STYLESHEET_NAME, "r") as stylesheet:
-            app.setStyleSheet(stylesheet.read())
-    except FileNotFoundError:
-        logging.warning(f"Could not find stylesheet {STYLESHEET_NAME}")
+        app = QtWidgets.QApplication(sys.argv)
+        try:
+            with open(STYLESHEET_NAME, "r") as stylesheet:
+                app.setStyleSheet(stylesheet.read())
+        except FileNotFoundError:
+            logging.warning(f"Could not find stylesheet {STYLESHEET_NAME}")
 
-    window = QtWidgets.QWidget()
-    window_layout = QtWidgets.QVBoxLayout()
-    window.setLayout(window_layout)
+        window = QtWidgets.QWidget()
+        window_layout = QtWidgets.QVBoxLayout()
+        window.setLayout(window_layout)
 
-    radar_label = QtWidgets.QLabel("Radar Data")
-    radar_label.setAlignment(Qt.AlignCenter)
-    window_layout.addWidget(radar_label)
+        radar_label = QtWidgets.QLabel("Radar Data")
+        radar_label.setAlignment(Qt.AlignCenter)
+        window_layout.addWidget(radar_label)
 
-    radar_image = RadarImage()
-    radar_image.setAlignment(Qt.AlignCenter)
-    window_layout.addWidget(radar_image)
+        radar_image = RadarImage()
+        radar_image.setAlignment(Qt.AlignCenter)
+        window_layout.addWidget(radar_image)
 
-    data_thread = DataThread(sock, radar_image)
-    data_thread.new_data.connect(radar_image.update)
-    data_thread.start()
+        data_thread = DataThread(sock, radar_image)
+        data_thread.new_data.connect(radar_image.update)
+        data_thread.start()
 
-    window.show()
-    qt_exit_code = app.exec_()
-    logging.debug("Stopping thread...")
-    data_thread.stopping = True
-    logging.debug("Shutting down socket")
-    data_thread.wait()
-    sys.exit(qt_exit_code)
+        window.show()
+        qt_exit_code = app.exec_()
+        logging.debug("Stopping thread...")
+        data_thread.stopping = True
+        logging.debug("Shutting down socket")
+        data_thread.wait()
+        sys.exit(qt_exit_code)
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ import sys
 import time
 import socket
 
-from radar_display import UDP_PORT, IMAGE_DIMENSIONS, UDP_PING_MESSAGE
+from radar_display import TCP_PORT, IMAGE_DIMENSIONS
 
 
 def main():
@@ -14,25 +14,25 @@ def main():
 
     data = bytearray([127] * (IMAGE_DIMENSIONS[0] * IMAGE_DIMENSIONS[1]))
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(("", UDP_PORT))
-    logging.info(f"Listening for message {UDP_PING_MESSAGE}")
-    message, address = sock.recvfrom(len(UDP_PING_MESSAGE))
-    logging.info(f"Got response: {message}")
-    if message != UDP_PING_MESSAGE:
-        logging.error(f"Did not get back {UDP_PING_MESSAGE}")
-        sys.exit(1)
-    logging.info(f"Accepted new client from {address}!")
-    logging.info(f"Sending back {UDP_PING_MESSAGE}")
-    sock.sendto(UDP_PING_MESSAGE, address)
-    while True:
-        logging.info("Sending new image")
-        # for i in range(0, IMAGE_DIMENSIONS[0]):
-        # for j in range(0, IMAGE_DIMENSIONS[1]):
-        # sock.sendto(bytes([127]), address)
-        sock.sendto(data, address)
-        logging.info("Waiting")
-        time.sleep(1)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind(("", TCP_PORT))
+    logging.info("Waiting for connection")
+    sock.listen(1)
+    conn, address = sock.accept()
+    with conn:
+        logging.info(f"Connected to {address}")
+        while True:
+            logging.info("Sending new image")
+            # for i in range(0, IMAGE_DIMENSIONS[0]):
+            # for j in range(0, IMAGE_DIMENSIONS[1]):
+            # sock.sendto(bytes([127]), address)
+            try:
+                conn.sendall(data)
+            except BrokenPipeError:
+                logging.warning("Client disconnected")
+                sys.exit(0)
+            logging.info("Waiting")
+            time.sleep(1)
 
 
 if __name__ == "__main__":
