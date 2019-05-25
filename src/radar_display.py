@@ -15,6 +15,8 @@ import logging  # python logging library
 import coloredlogs  # pretty logs
 import socket  # receiving data from radar server
 import time  # make data thread wait when testing TODO remove once socket server is working
+import numpy as np
+from io import BytesIO
 
 STYLESHEET_NAME = "stylesheet.qss"
 IMAGE_DIMENSIONS = [128, 128]
@@ -75,13 +77,14 @@ class DataThread(QThread):
             # for i in range(0, IMAGE_DIMENSIONS[0]):
             #     for j in range(0, IMAGE_DIMENSIONS[1]):
             #         self.data[i * IMAGE_DIMENSIONS[0] + j] = i + j
-
+            final_data = np.load(BytesIO(data))["frame"]
+            final_data = np.int8(final_data)  # TODO colorramp with slider as max
             # logging.debug(f"emitting new data to {self.data}")
             if not self.stopping:
                 logging.info(f"Received new image")
                 self.new_data.emit(
                     QImage(
-                        data,
+                        final_data,
                         IMAGE_DIMENSIONS[0],
                         IMAGE_DIMENSIONS[1],
                         QImage.Format_Grayscale8,

@@ -1,2 +1,4 @@
 PySide2==5.12.3
 coloredlogs==10.0
+Pillow==6.0.0
+numpy==1.16.3
