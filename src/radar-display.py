@@ -10,12 +10,26 @@ import coloredlogs
 STYLESHEET_NAME = "stylesheet.qss"
 IMAGE_DIMENSIONS = [16, 16]
 
+radar_qimage = None
+
 
 class RadarImage(QtWidgets.QLabel):
     def __init__(self, *args):
+        """Creates the QImage if not created yet, then scales with aspect ratio"""
+        global radar_qimage  # updates from another thread
         super().__init__(*args)
-        image = QImage(3, 3, QImage.Format_Grayscale8)
-        self.setPixmap(QPixmap.fromImage(image))
+        if radar_qimage == None:
+            radar_qimage = QImage(
+                IMAGE_DIMENSIONS[0], IMAGE_DIMENSIONS[1], QImage.Format_Grayscale8
+            )
+        label_width = self.width()
+        label_height = self.height()
+        self.setPixmap(
+            QPixmap.fromImage(radar_qimage).scaled(
+                label_width, label_height, Qt.KeepAspectRatio
+            )
+        )
+        self.setScaledContents(False)
         self.show()
 
 
