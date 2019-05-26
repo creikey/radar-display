@@ -40,6 +40,7 @@ def main():
             # logging.debug(f"{len(f_data)}")
             try:
                 conn.sendall(data.tobytes())
+                # time.sleep(2.0)
             except BrokenPipeError:
                 logging.warning("Client disconnected")
                 sys.exit(0)

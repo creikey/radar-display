@@ -17,6 +17,9 @@ import socket  # receiving data from radar server
 import time  # make data thread wait when testing TODO remove once socket server is working
 import numpy as np
 from io import BytesIO
+from PIL import Image, ImageQt
+import matplotlib as mpl
+import matplotlib.cm as cm
 
 STYLESHEET_NAME = "stylesheet.qss"
 IMAGE_DIMENSIONS = [1024, 256]
@@ -94,19 +97,21 @@ class DataThread(QThread):
             #     for j in range(0, IMAGE_DIMENSIONS[1]):
             #         self.data[i * IMAGE_DIMENSIONS[0] + j] = i + j
             # logging.debug(f"{DATA_LEN}")
+            norm = mpl.colors.Normalize(vmin=0.0, vmax=255.0)
+            cmap = cm.hot
+            m = cm.ScalarMappable(norm=norm, cmap=cmap)
             final_data = np.frombuffer(data, dtype="f")
-            final_data = np.int8(final_data)  # TODO colorramp with slider as max
+            final_data.shape = (IMAGE_DIMENSIONS[0], IMAGE_DIMENSIONS[1])
+            # logging.debug(f"{m.to_rgba(127.0)}")
+            ultra_final_data = m.to_rgba(final_data, bytes=True)
+            # logging.debug(f"{ultra_final_data[0]}")
+            im = Image.frombytes(
+                "RGBA", (IMAGE_DIMENSIONS[0], IMAGE_DIMENSIONS[1]), ultra_final_data
+            )
             # logging.debug(f"emitting new data to {self.data}")
             if not self.stopping:
                 # logging.info(f"Received new image")
-                self.new_data.emit(
-                    QImage(
-                        final_data,
-                        IMAGE_DIMENSIONS[0],
-                        IMAGE_DIMENSIONS[1],
-                        QImage.Format_Grayscale8,
-                    )
-                )
+                self.new_data.emit(QImage(ImageQt.ImageQt(im)))
             # time.sleep(1.0)
 
 
