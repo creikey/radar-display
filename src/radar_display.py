@@ -27,6 +27,7 @@ TCP_IP = "127.0.0.1"
 TCP_PORT = 54321
 UDP_PING_MESSAGE = b"ready"
 SOCKET_TIMEOUT = 3.0
+DEFAULT_VMAX = 255.0
 
 # f = BytesIO()
 # np.savez_compressed(
@@ -72,6 +73,7 @@ class DataThread(QThread):
             DataThread, self
         ).__init__()  # not sure why syntax has to be this way, errors if not
         self.sock = sock
+        self.vmax = DEFAULT_VMAX
         self.stopping = False
         # self.data = bytearray(IMAGE_DIMENSIONS[0] * IMAGE_DIMENSIONS[1])
         self.radar_image = radar_image
@@ -97,7 +99,7 @@ class DataThread(QThread):
             #     for j in range(0, IMAGE_DIMENSIONS[1]):
             #         self.data[i * IMAGE_DIMENSIONS[0] + j] = i + j
             # logging.debug(f"{DATA_LEN}")
-            norm = mpl.colors.Normalize(vmin=0.0, vmax=255.0)
+            norm = mpl.colors.Normalize(vmin=0.0, vmax=self.vmax)
             cmap = cm.hot
             m = cm.ScalarMappable(norm=norm, cmap=cmap)
             final_data = np.frombuffer(data, dtype="f")
@@ -113,6 +115,13 @@ class DataThread(QThread):
                 # logging.info(f"Received new image")
                 self.new_data.emit(QImage(ImageQt.ImageQt(im)))
             # time.sleep(1.0)
+
+    @Slot(str)
+    def new_vmax(self, new_vmax):
+        if new_vmax == "":
+            self.vmax = DEFAULT_VMAX
+        else:
+            self.vmax = float(new_vmax)
 
 
 def main():
@@ -144,9 +153,21 @@ def main():
         radar_image.setAlignment(Qt.AlignCenter)
         window_layout.addWidget(radar_image)
 
+        properties = QtWidgets.QWidget()
+        properties_layout = QtWidgets.QGridLayout()
+        properties.setLayout(properties_layout)
+        window_layout.addWidget(properties)
+
         data_thread = DataThread(sock, radar_image)
         data_thread.new_data.connect(radar_image.update)
         data_thread.start()
+
+        vmax_linedit = QtWidgets.QLineEdit()
+        vmax_linedit.text = str(DEFAULT_VMAX)
+        vmax_linedit.setValidator(QtGui.QDoubleValidator())
+        vmax_linedit.textChanged.connect(data_thread.new_vmax)
+        properties_layout.addWidget(QtWidgets.QLabel("Colorramp VMax: "), 0, 0, 1, 1)
+        properties_layout.addWidget(vmax_linedit, 0, 1, 1, 1)
 
         window.show()
         qt_exit_code = app.exec_()
