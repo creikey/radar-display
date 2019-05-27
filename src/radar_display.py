@@ -55,19 +55,19 @@ class RadarImage(QtWidgets.QLabel):
         self.setScaledContents(False)
         self.show()
 
-    @Slot(QImage)
-    def update(self, radar_qimage):  # received from thread when new data is ready
+    @Slot(QPixmap)
+    def update(self, radar_pixmap):  # received from thread when new data is ready
         label_width = self.width()
         label_height = self.height()
         self.setPixmap(
-            QPixmap.fromImage(radar_qimage).scaled(
+            radar_pixmap.scaled(
                 label_width, label_height, Qt.KeepAspectRatio
             )
         )
 
 
 class DataThread(QThread):
-    new_data = Signal(QImage)
+    new_data = Signal(QPixmap)
 
     def __init__(self, sock, radar_image: RadarImage):
         super(
@@ -115,9 +115,11 @@ class DataThread(QThread):
                 "RGBA", (IMAGE_DIMENSIONS[0], IMAGE_DIMENSIONS[1]), ultra_final_data
             )
             # logging.debug(f"emitting new data to {self.data}")
+            imqt = ImageQt.ImageQt(im)
+            pix = QPixmap.fromImage(imqt)
             if not self.stopping:
                 # logging.info(f"Received new image")
-                self.new_data.emit(QImage(ImageQt.ImageQt(im)))
+                self.new_data.emit(pix)
             # time.sleep(1.0)
 
     @Slot(str)
