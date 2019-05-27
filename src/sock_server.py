@@ -40,6 +40,7 @@ def main():
             # f_data = f.read()
             # logging.debug(f"{len(f_data)}")
             try:
+                data = np.random.rand(IMAGE_DIMENSIONS[0], IMAGE_DIMENSIONS[1])
                 conn.sendall(data.tobytes())
                 # time.sleep(2.0)
             except BrokenPipeError:
